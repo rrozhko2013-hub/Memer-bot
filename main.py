@@ -1,29 +1,40 @@
 import telebot
+import os
+from threading import Thread
+from flask import Flask
 
-# Твой токен
+# Твой токен Telegram
 BOT_TOKEN = '8902677080:AAHF_NagzxIiqE4rfA5cicuYba0js9gKxxw'
 bot = telebot.TeleBot(BOT_TOKEN)
 
+# Создаем мини веб-сервер для хостинга Render
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Бот активен и работает!"
+
+def run_web_server():
+    # Render автоматически передает порт в переменные окружения
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+# Хэндлер для команды повторения
 @bot.message_handler(func=lambda message: message.text and message.text.startswith('*повтори '))
 def repeat_and_delete(message):
     try:
-        # Извлекаем текст после "*повтори "
-        # 9 - это длина строки "*повтори "
         text_to_repeat = message.text[9:].strip()
-        
         if text_to_repeat:
-            # 1. Отправляем текст от имени бота
             bot.send_message(message.chat.id, text_to_repeat)
-            
-            # 2. Удаляем сообщение пользователя
             bot.delete_message(message.chat.id, message.message_id)
-        else:
-            # Если текста нет, можно просто ответить или проигнорировать
-            bot.reply_to(message, "После команды нужно написать текст!")
-            
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Ошибка при удалении/отправке: {e}")
 
 if __name__ == '__main__':
-    print("Бот запущен!")
+    print("Запуск веб-сервера для Render...")
+    # Запускаем веб-сервер в отдельном потоке, чтобы Render не ругался на Timed Out
+    server_thread = Thread(target=run_web_server)
+    server_thread.start()
+    
+    print("Бот запущен в режиме polling!")
     bot.infinity_polling()
